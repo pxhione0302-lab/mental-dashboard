@@ -108,6 +108,7 @@ const reminders = [
 const dateEl = document.querySelector("#today-date");
 const phaseEl = document.querySelector("#today-phase");
 const timeEl = document.querySelector("#today-time");
+const titleEl = document.querySelector("#today-title");
 const taskForm = document.querySelector("#task-form");
 const taskInput = document.querySelector("#task-input");
 const taskList = document.querySelector("#task-list");
@@ -123,6 +124,8 @@ const importDataInput = document.querySelector("#import-data-input");
 const closeDataPanelButton = document.querySelector("#close-data-panel-button");
 
 let state = loadState();
+let titleTapCount = 0;
+let titleTapTimer;
 
 // Read any known saved shape and migrate it into the current schema without dropping user data.
 function loadState() {
@@ -691,6 +694,22 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && dataPanel.classList.contains("is-open")) {
     closeDataPanel();
   }
+});
+
+// Hidden mobile entry: tap the "每日提醒" title 5 times to open the Data panel.
+titleEl.addEventListener("click", () => {
+  window.clearTimeout(titleTapTimer);
+  titleTapCount += 1;
+
+  if (titleTapCount >= 5) {
+    titleTapCount = 0;
+    openDataPanel();
+    return;
+  }
+
+  titleTapTimer = window.setTimeout(() => {
+    titleTapCount = 0;
+  }, 1200);
 });
 
 formatToday();
