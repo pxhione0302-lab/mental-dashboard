@@ -2,8 +2,15 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>每日提醒</title>
+    <meta name="theme-color" content="#0d1118" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="每日提醒" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -84,6 +91,17 @@
           <button class="ghost-button" id="reminder-button" type="button">
             换一句
           </button>
+        </section>
+
+        <section class="panel archive-panel" aria-labelledby="archive-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Archive</p>
+              <h2 id="archive-title">历史记录</h2>
+            </div>
+          </div>
+
+          <div class="archive-list" id="archive-list" aria-live="polite"></div>
         </section>
       </section>
     </main>

@@ -115,24 +115,43 @@ const lineGrid = document.querySelector("#line-grid");
 const feelingInput = document.querySelector("#feeling-input");
 const reminderText = document.querySelector("#reminder-text");
 const reminderButton = document.querySelector("#reminder-button");
+const archiveList = document.querySelector("#archive-list");
 
 let state = loadState();
 
 // Read one compact object from localStorage, then merge it with the current shape.
 function loadState() {
+  const today = getDateKey(new Date());
   const fallback = {
     tasks: [],
     longLines: Object.fromEntries(longLineNames.map((name) => [name, ""])),
     feeling: "",
+    activeDate: today,
+    archives: [],
   };
 
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return {
+    const hydrated = {
       ...fallback,
       ...saved,
       longLines: { ...fallback.longLines, ...(saved?.longLines || {}) },
+      archives: Array.isArray(saved?.archives) ? saved.archives : [],
     };
+
+    if (!saved?.activeDate) {
+      hydrated.activeDate = today;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(hydrated));
+      return hydrated;
+    }
+
+    if (hydrated.activeDate !== today) {
+      const nextState = archivePreviousDay(hydrated, today);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+      return nextState;
+    }
+
+    return hydrated;
   } catch {
     return fallback;
   }
@@ -143,7 +162,65 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function getDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function hasArchiveContent(dayState) {
+  const hasTasks = dayState.tasks?.length > 0;
+  const hasLongLines = Object.values(dayState.longLines || {}).some((value) =>
+    String(value || "").trim()
+  );
+  const hasFeeling = Boolean(String(dayState.feeling || "").trim());
+  return hasTasks || hasLongLines || hasFeeling;
+}
+
+function archivePreviousDay(dayState, today) {
+  const archives = [...(dayState.archives || [])];
+
+  if (hasArchiveContent(dayState)) {
+    const record = {
+      date: dayState.activeDate,
+      tasks: (dayState.tasks || []).map((task) => ({ ...task })),
+      longLines: { ...dayState.longLines },
+      feeling: dayState.feeling || "",
+    };
+    const existingIndex = archives.findIndex((archive) => archive.date === record.date);
+
+    if (existingIndex >= 0) {
+      archives[existingIndex] = record;
+    } else {
+      archives.push(record);
+    }
+  }
+
+  return {
+    ...dayState,
+    activeDate: today,
+    tasks: [],
+    longLines: Object.fromEntries(longLineNames.map((name) => [name, ""])),
+    feeling: "",
+    archives,
+  };
+}
+
+function checkDateRollover() {
+  const today = getDateKey(new Date());
+  if (state.activeDate === today) return;
+
+  state = archivePreviousDay(state, today);
+  saveState();
+  renderTasks();
+  renderLongLines();
+  renderArchive();
+  feelingInput.value = state.feeling;
+}
+
 function formatToday() {
+  checkDateRollover();
   const now = new Date();
   const month = new Intl.DateTimeFormat("en-US", { month: "short" })
     .format(now)
@@ -257,6 +334,130 @@ function renderLongLines() {
   });
 }
 
+function formatArchiveDate(dateKey) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  const monthName = new Intl.DateTimeFormat("en-US", { month: "short" })
+    .format(date)
+    .toUpperCase();
+  const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(date);
+
+  return {
+    title: `${year} / ${monthName} / ${String(day).padStart(2, "0")}`,
+    subtitle: weekday,
+  };
+}
+
+function renderArchive() {
+  archiveList.innerHTML = "";
+
+  const archives = [...(state.archives || [])].sort((a, b) => b.date.localeCompare(a.date));
+
+  if (archives.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "archive-empty";
+    empty.textContent = "还没有旧日子。等明天到来，今天会被轻轻收好。";
+    archiveList.appendChild(empty);
+    return;
+  }
+
+  archives.forEach((archive) => {
+    const { title, subtitle } = formatArchiveDate(archive.date);
+    const details = document.createElement("details");
+    details.className = "archive-item";
+
+    const summary = document.createElement("summary");
+    summary.className = "archive-summary";
+
+    const dateWrap = document.createElement("span");
+    dateWrap.className = "archive-date-wrap";
+
+    const dateText = document.createElement("span");
+    dateText.className = "archive-date";
+    dateText.textContent = title;
+
+    const weekdayText = document.createElement("span");
+    weekdayText.className = "archive-weekday";
+    weekdayText.textContent = subtitle;
+
+    const marker = document.createElement("span");
+    marker.className = "archive-marker";
+    marker.textContent = "展开";
+
+    dateWrap.append(dateText, weekdayText);
+    summary.append(dateWrap, marker);
+
+    const body = document.createElement("div");
+    body.className = "archive-body";
+    body.append(createArchiveBlock("今日主线", renderArchivedTasks(archive.tasks || [])));
+    body.append(createArchiveBlock("长期线", renderArchivedLines(archive.longLines || {})));
+
+    if (archive.feeling?.trim()) {
+      const feeling = document.createElement("p");
+      feeling.className = "archive-feeling";
+      feeling.textContent = archive.feeling;
+      body.append(createArchiveBlock("今日感受", feeling));
+    }
+
+    details.append(summary, body);
+    archiveList.appendChild(details);
+  });
+}
+
+function createArchiveBlock(title, content) {
+  const block = document.createElement("section");
+  block.className = "archive-block";
+
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+
+  block.append(heading, content);
+  return block;
+}
+
+function renderArchivedTasks(tasks) {
+  if (tasks.length === 0) return createMutedLine("没有写下主线。");
+
+  const list = document.createElement("ul");
+  list.className = "archive-task-list";
+
+  tasks.forEach((task) => {
+    const item = document.createElement("li");
+    item.className = task.done ? "is-done" : "";
+    item.textContent = task.title;
+    list.appendChild(item);
+  });
+
+  return list;
+}
+
+function renderArchivedLines(longLines) {
+  const list = document.createElement("dl");
+  list.className = "archive-line-list";
+
+  longLineNames.forEach((name) => {
+    const value = String(longLines[name] || "").trim();
+    if (!value) return;
+
+    const term = document.createElement("dt");
+    term.textContent = name;
+
+    const description = document.createElement("dd");
+    description.textContent = value;
+
+    list.append(term, description);
+  });
+
+  return list.children.length ? list : createMutedLine("长期线没有留下推进。");
+}
+
+function createMutedLine(text) {
+  const line = document.createElement("p");
+  line.className = "archive-muted";
+  line.textContent = text;
+  return line;
+}
+
 function createId() {
   if (globalThis.crypto?.randomUUID) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -307,4 +508,5 @@ setInterval(updateTime, 1000);
 setInterval(formatToday, 60000);
 renderTasks();
 renderLongLines();
+renderArchive();
 feelingInput.value = state.feeling;
