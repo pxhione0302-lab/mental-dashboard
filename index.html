@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>每日提醒</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero" aria-labelledby="today-title">
+        <div class="time-stack" aria-label="当前日期和时间">
+          <p class="date-label" id="today-date"></p>
+          <p class="phase-label" id="today-phase"></p>
+          <p class="time-label" id="today-time"></p>
+        </div>
+        <h1 id="today-title">每日提醒</h1>
+        <p class="daily-copy">
+          今天不用成为谁，只要别离开自己太远。
+        </p>
+      </section>
+
+      <section class="workspace" aria-label="每日事项管理">
+        <section class="panel main-thread" aria-labelledby="main-thread-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Primary</p>
+              <h2 id="main-thread-title">今日主线</h2>
+            </div>
+            <span class="counter" id="main-counter">0 / 3</span>
+          </div>
+
+          <form class="task-form" id="task-form">
+            <input
+              id="task-input"
+              type="text"
+              maxlength="56"
+              autocomplete="off"
+              placeholder="写下今天最重要的一件事"
+            />
+            <button type="submit">添加</button>
+          </form>
+
+          <ul class="task-list" id="task-list" aria-live="polite"></ul>
+        </section>
+
+        <section class="panel long-lines" aria-labelledby="long-lines-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Continuity</p>
+              <h2 id="long-lines-title">长期线</h2>
+            </div>
+          </div>
+
+          <div class="line-grid" id="line-grid"></div>
+        </section>
+
+        <section class="panel feeling-panel" aria-labelledby="feeling-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Inner Weather</p>
+              <h2 id="feeling-title">今日感受</h2>
+            </div>
+          </div>
+
+          <textarea
+            id="feeling-input"
+            rows="7"
+            placeholder="今天有没有哪一刻，让你觉得自己真实地活着？"
+          ></textarea>
+        </section>
+
+        <section class="panel reminder-panel" aria-labelledby="reminder-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Signal</p>
+              <h2 id="reminder-title">随机提醒</h2>
+            </div>
+          </div>
+
+          <p class="reminder-text" id="reminder-text">
+            今天不用很厉害，但要真实一点。
+          </p>
+          <button class="ghost-button" id="reminder-button" type="button">
+            换一句
+          </button>
+        </section>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
