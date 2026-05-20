@@ -135,6 +135,7 @@ function loadState() {
     const hydrated = {
       ...fallback,
       ...saved,
+      tasks: normalizeTasks(saved?.tasks),
       longLines: { ...fallback.longLines, ...(saved?.longLines || {}) },
       archives: Array.isArray(saved?.archives) ? saved.archives : [],
     };
@@ -155,6 +156,18 @@ function loadState() {
   } catch {
     return fallback;
   }
+}
+
+function normalizeTasks(tasks) {
+  if (!Array.isArray(tasks)) return [];
+
+  return tasks
+    .filter((task) => task && typeof task === "object" && String(task.title || "").trim())
+    .map((task) => ({
+      id: task.id || createId(),
+      title: String(task.title).trim(),
+      done: Boolean(task.done),
+    }));
 }
 
 // Saving after each edit keeps the page low-friction: no extra button, no ceremony.
@@ -257,6 +270,7 @@ function updateTime() {
 
 // The main thread is intentionally capped at three tasks to protect focus.
 function renderTasks() {
+  state.tasks = normalizeTasks(state.tasks);
   taskList.innerHTML = "";
   mainCounter.textContent = `${state.tasks.length} / 3`;
   taskInput.disabled = state.tasks.length >= 3;
@@ -349,6 +363,8 @@ function formatArchiveDate(dateKey) {
 }
 
 function renderArchive() {
+  if (!archiveList) return;
+
   archiveList.innerHTML = "";
 
   const archives = [...(state.archives || [])].sort((a, b) => b.date.localeCompare(a.date));
@@ -481,6 +497,7 @@ function pickReminder() {
 taskForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
+  state.tasks = normalizeTasks(state.tasks);
   const title = taskInput.value.trim();
   if (!title || state.tasks.length >= 3) return;
 

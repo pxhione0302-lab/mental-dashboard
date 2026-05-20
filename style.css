@@ -325,7 +325,7 @@ button:disabled {
 
 .task-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   min-height: 154px;
   margin: 0;
   padding: 0;
@@ -337,49 +337,69 @@ button:disabled {
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 12px;
-  min-height: 54px;
-  border: 1px solid var(--line-soft);
+  min-height: 46px;
+  border: 1px solid rgba(230, 237, 246, 0.07);
   border-radius: var(--radius);
-  padding: 11px 12px;
-  background: rgba(255, 255, 255, 0.035);
-  transition: border-color 240ms ease, background 240ms ease;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.024);
+  transition: border-color 160ms ease, background 160ms ease;
 }
 
 .task-item:hover {
-  border-color: rgba(230, 237, 246, 0.13);
-  background: rgba(255, 255, 255, 0.047);
+  border-color: rgba(230, 237, 246, 0.11);
+  background: rgba(255, 255, 255, 0.034);
+}
+
+.main-thread input:focus {
+  transform: none;
+}
+
+.main-thread button:active,
+.delete-button:active {
+  transform: none;
+}
+
+.main-thread .task-item:hover {
+  border-color: rgba(230, 237, 246, 0.11);
+  background: rgba(255, 255, 255, 0.034);
 }
 
 .task-check {
   width: 20px;
   height: 20px;
   accent-color: var(--accent);
+  margin: 0;
 }
 
 .task-title {
   overflow-wrap: anywhere;
+  color: rgba(243, 244, 241, 0.84);
   line-height: 1.45;
 }
 
 .task-item.is-done .task-title {
-  color: var(--faint);
+  color: rgba(243, 244, 241, 0.4);
   text-decoration: line-through;
 }
 
 .delete-button {
-  width: 34px;
-  min-height: 34px;
+  width: 30px;
+  min-height: 30px;
   padding: 0;
-  border-color: rgba(216, 141, 126, 0.22);
-  color: var(--danger);
+  border-color: rgba(230, 237, 246, 0.08);
+  color: rgba(243, 244, 241, 0.42);
   background: transparent;
-  font-size: 1.2rem;
+  font-size: 1.05rem;
+  font-weight: 400;
   line-height: 1;
+  box-shadow: none;
 }
 
 .delete-button:hover {
-  color: #f0b0a5;
-  background: rgba(216, 141, 126, 0.08);
+  color: rgba(243, 244, 241, 0.72);
+  border-color: rgba(230, 237, 246, 0.14);
+  background: rgba(255, 255, 255, 0.038);
+  box-shadow: none;
 }
 
 .empty-state {
@@ -740,4 +760,99 @@ button:disabled {
   .archive-line-list dd {
     padding-bottom: 7px;
   }
+}
+
+/* Restores the older, lighter one-line task interaction in Today's Mainline. */
+.main-thread .task-list {
+  gap: 0;
+  min-height: 154px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 4px 0;
+  background: rgba(5, 8, 13, 0.24);
+  overflow: hidden;
+}
+
+.main-thread .task-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  border: 0;
+  border-bottom: 1px solid rgba(230, 237, 246, 0.06);
+  border-radius: 0;
+  padding: 7px 10px;
+  background: transparent;
+  box-shadow: none;
+  transition: background 140ms ease;
+}
+
+.main-thread .task-item:last-child {
+  border-bottom: 0;
+}
+
+.main-thread .task-item:hover {
+  border-color: rgba(230, 237, 246, 0.06);
+  background: rgba(255, 255, 255, 0.026);
+  transform: none;
+}
+
+.main-thread .task-check {
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  accent-color: #c8d3dd;
+  transform: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.main-thread .task-title {
+  color: rgba(243, 244, 241, 0.86);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.main-thread .task-item.is-done .task-title {
+  color: rgba(243, 244, 241, 0.4);
+  text-decoration: line-through;
+}
+
+.main-thread .delete-button {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  border: 1px solid rgba(230, 237, 246, 0.08);
+  border-radius: 6px;
+  padding: 0;
+  color: rgba(243, 244, 241, 0.42);
+  background: transparent;
+  box-shadow: none;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.main-thread .delete-button:hover {
+  color: rgba(243, 244, 241, 0.76);
+  border-color: rgba(230, 237, 246, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: none;
+  transform: none;
+}
+
+.main-thread .empty-state {
+  min-height: 154px;
+  border: 0;
+  background: transparent;
 }
