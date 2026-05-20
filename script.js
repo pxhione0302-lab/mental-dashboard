@@ -295,8 +295,8 @@ function renderTasks() {
     checkbox.setAttribute("aria-label", `完成 ${task.title}`);
     checkbox.addEventListener("change", () => {
       task.done = checkbox.checked;
+      item.classList.toggle("is-done", task.done);
       saveState();
-      renderTasks();
     });
 
     const title = document.createElement("span");
