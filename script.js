@@ -1,4 +1,5 @@
-const STORAGE_KEY = "daily-reminder-site-v1";
+const STORAGE_KEY = "mental-dashboard-data-v2";
+const LEGACY_STORAGE_KEYS = ["daily-reminder-site-v1"];
 const SCHEMA_VERSION = 2;
 
 const longLineNames = ["医学", "英语", "音乐", "创作"];
@@ -132,22 +133,95 @@ function loadState() {
   const today = getDateKey(new Date());
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const saved = raw ? JSON.parse(raw) : null;
+    const stored = readStoredState();
+
+    if (stored.error) {
+      console.log("[Mental Dashboard] localStorage read failed; using fallback.", stored.error);
+      return createFallbackState(today);
+    }
+
+    const saved = stored.value;
     const hydrated = migrateState(saved, today);
 
     if (hydrated.activeDate !== today) {
       const nextState = archivePreviousDay(hydrated, today);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+      writeCurrentState(nextState);
+      console.log("[Mental Dashboard] Date changed; previous day archived.", {
+        key: STORAGE_KEY,
+        from: hydrated.activeDate,
+        to: today,
+      });
       return nextState;
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(hydrated));
+    if (stored.source === "legacy") {
+      writeCurrentState(hydrated);
+      console.log("[Mental Dashboard] Migrated legacy localStorage data.", {
+        from: stored.key,
+        to: STORAGE_KEY,
+        schemaVersion: SCHEMA_VERSION,
+      });
+    } else if (stored.source === "current") {
+      writeCurrentState(hydrated);
+      console.log("[Mental Dashboard] Loaded current localStorage data.", {
+        key: STORAGE_KEY,
+        schemaVersion: hydrated.schemaVersion,
+      });
+    } else {
+      writeCurrentState(hydrated);
+      console.log("[Mental Dashboard] No existing localStorage data; initialized fallback.", {
+        key: STORAGE_KEY,
+        schemaVersion: SCHEMA_VERSION,
+      });
+    }
 
     return hydrated;
   } catch {
     return createFallbackState(today);
   }
+}
+
+function readStoredState() {
+  const currentRaw = localStorage.getItem(STORAGE_KEY);
+  if (currentRaw) {
+    try {
+      return {
+        source: "current",
+        key: STORAGE_KEY,
+        value: JSON.parse(currentRaw),
+      };
+    } catch (error) {
+      return { source: "current", key: STORAGE_KEY, value: null, error };
+    }
+  }
+
+  for (const key of LEGACY_STORAGE_KEYS) {
+    const legacyRaw = localStorage.getItem(key);
+    if (!legacyRaw) continue;
+
+    try {
+      return {
+        source: "legacy",
+        key,
+        value: JSON.parse(legacyRaw),
+      };
+    } catch (error) {
+      console.log("[Mental Dashboard] Legacy localStorage read failed; trying next key.", {
+        key,
+        error,
+      });
+    }
+  }
+
+  return {
+    source: "empty",
+    key: STORAGE_KEY,
+    value: null,
+  };
+}
+
+function writeCurrentState(nextState) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
 }
 
 function createFallbackState(today = getDateKey(new Date())) {
@@ -263,7 +337,7 @@ function normalizeArchiveRecord(record) {
 // Saving after each edit keeps the page low-friction: no extra button, no ceremony.
 function saveState() {
   state = migrateState(state, state.activeDate || getDateKey(new Date()));
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  writeCurrentState(state);
 }
 
 function openDataPanel() {
@@ -308,7 +382,7 @@ function importData(file) {
       const confirmed = window.confirm("导入会覆盖当前本地数据，是否继续？");
       if (!confirmed) return;
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+      writeCurrentState(migrated);
       window.location.reload();
     } catch {
       window.alert("导入失败：无法读取这个 JSON 文件。");
