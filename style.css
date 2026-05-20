@@ -877,3 +877,105 @@ button:disabled {
   border: 0;
   background: transparent;
 }
+
+/* Exact restore: original Today Mainline task style. */
+.main-thread .task-list {
+  display: grid;
+  gap: 10px;
+  min-height: 154px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  list-style: none;
+}
+
+.main-thread .task-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 11px 12px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: none;
+  transition: none;
+}
+
+.main-thread .task-item:hover {
+  border-color: var(--line-soft);
+  background: rgba(255, 255, 255, 0.035);
+  transform: none;
+}
+
+.main-thread .task-check {
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  margin: 0;
+  padding: 0;
+  border: initial;
+  border-radius: initial;
+  background: initial;
+  box-shadow: none;
+  accent-color: var(--accent);
+  transform: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.main-thread .task-check::before {
+  content: none;
+}
+
+.main-thread .task-title {
+  color: var(--text);
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.main-thread .task-item.is-done .task-title {
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.main-thread .delete-button {
+  width: 34px;
+  min-width: 34px;
+  height: auto;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid rgba(216, 141, 126, 0.22);
+  border-radius: var(--radius);
+  color: var(--danger);
+  background: transparent;
+  box-shadow: none;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.main-thread .delete-button:hover {
+  color: #f0b0a5;
+  border-color: rgba(216, 141, 126, 0.22);
+  background: rgba(216, 141, 126, 0.08);
+  box-shadow: none;
+  transform: none;
+}
+
+.main-thread .empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 154px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  color: var(--faint);
+  background: transparent;
+  text-align: center;
+}
