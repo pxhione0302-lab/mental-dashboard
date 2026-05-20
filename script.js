@@ -1,4 +1,5 @@
 const STORAGE_KEY = "daily-reminder-site-v1";
+const SCHEMA_VERSION = 2;
 
 const longLineNames = ["医学", "英语", "音乐", "创作"];
 const reminders = [
@@ -116,35 +117,21 @@ const feelingInput = document.querySelector("#feeling-input");
 const reminderText = document.querySelector("#reminder-text");
 const reminderButton = document.querySelector("#reminder-button");
 const archiveList = document.querySelector("#archive-list");
+const dataPanel = document.querySelector("#data-panel");
+const exportDataButton = document.querySelector("#export-data-button");
+const importDataInput = document.querySelector("#import-data-input");
+const closeDataPanelButton = document.querySelector("#close-data-panel-button");
 
 let state = loadState();
 
-// Read one compact object from localStorage, then merge it with the current shape.
+// Read any known saved shape and migrate it into the current schema without dropping user data.
 function loadState() {
   const today = getDateKey(new Date());
-  const fallback = {
-    tasks: [],
-    longLines: Object.fromEntries(longLineNames.map((name) => [name, ""])),
-    feeling: "",
-    activeDate: today,
-    archives: [],
-  };
 
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    const hydrated = {
-      ...fallback,
-      ...saved,
-      tasks: normalizeTasks(saved?.tasks),
-      longLines: { ...fallback.longLines, ...(saved?.longLines || {}) },
-      archives: Array.isArray(saved?.archives) ? saved.archives : [],
-    };
-
-    if (!saved?.activeDate) {
-      hydrated.activeDate = today;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(hydrated));
-      return hydrated;
-    }
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const saved = raw ? JSON.parse(raw) : null;
+    const hydrated = migrateState(saved, today);
 
     if (hydrated.activeDate !== today) {
       const nextState = archivePreviousDay(hydrated, today);
@@ -152,10 +139,72 @@ function loadState() {
       return nextState;
     }
 
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(hydrated));
+
     return hydrated;
   } catch {
-    return fallback;
+    return createFallbackState(today);
   }
+}
+
+function createFallbackState(today = getDateKey(new Date())) {
+  const archives = [];
+  const longLines = createEmptyLongLines();
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    currentDay: {
+      date: today,
+      tasks: [],
+      longLines,
+      feeling: "",
+    },
+    activeDate: today,
+    tasks: [],
+    longLines,
+    feeling: "",
+    archive: archives,
+    archives,
+  };
+}
+
+function migrateState(saved, today) {
+  const fallback = createFallbackState(today);
+  if (!saved || typeof saved !== "object") return fallback;
+
+  const currentDayRecord =
+    saved.currentDay && typeof saved.currentDay === "object" ? saved.currentDay : null;
+  const activeDate =
+    saved.activeDate ||
+    saved.currentDate ||
+    (typeof saved.currentDay === "string" ? saved.currentDay : null) ||
+    currentDayRecord?.date ||
+    today;
+  const tasks = normalizeTasks(saved.tasks ?? currentDayRecord?.tasks);
+  const longLines = normalizeLongLines(saved.longLines ?? currentDayRecord?.longLines);
+  const feeling = String(saved.feeling ?? currentDayRecord?.feeling ?? "");
+  const archives = normalizeArchives(saved.archives ?? saved.archive);
+
+  return {
+    ...fallback,
+    ...saved,
+    schemaVersion: SCHEMA_VERSION,
+    currentDay: {
+      date: activeDate,
+      tasks,
+      longLines,
+      feeling,
+    },
+    activeDate,
+    tasks,
+    longLines,
+    feeling,
+    archive: archives,
+    archives,
+  };
+}
+
+function createEmptyLongLines() {
+  return Object.fromEntries(longLineNames.map((name) => [name, ""]));
 }
 
 function normalizeTasks(tasks) {
@@ -170,9 +219,111 @@ function normalizeTasks(tasks) {
     }));
 }
 
+function normalizeLongLines(longLines) {
+  const normalized = createEmptyLongLines();
+  if (!longLines || typeof longLines !== "object") return normalized;
+
+  longLineNames.forEach((name) => {
+    normalized[name] = String(longLines[name] || "");
+  });
+
+  return normalized;
+}
+
+function normalizeArchives(archiveSource) {
+  const source = Array.isArray(archiveSource)
+    ? archiveSource
+    : archiveSource && typeof archiveSource === "object"
+      ? Object.values(archiveSource)
+      : [];
+
+  return source
+    .map((record) => normalizeArchiveRecord(record))
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function normalizeArchiveRecord(record) {
+  if (!record || typeof record !== "object") return null;
+
+  const date = record.date || record.activeDate || record.currentDay;
+  if (!date || typeof date !== "string") return null;
+
+  return {
+    date,
+    tasks: normalizeTasks(record.tasks),
+    longLines: normalizeLongLines(record.longLines),
+    feeling: String(record.feeling || ""),
+  };
+}
+
 // Saving after each edit keeps the page low-friction: no extra button, no ceremony.
 function saveState() {
+  state = migrateState(state, state.activeDate || getDateKey(new Date()));
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function openDataPanel() {
+  dataPanel.classList.add("is-open");
+  dataPanel.setAttribute("aria-hidden", "false");
+}
+
+function closeDataPanel() {
+  dataPanel.classList.remove("is-open");
+  dataPanel.setAttribute("aria-hidden", "true");
+  importDataInput.value = "";
+}
+
+function exportData() {
+  saveState();
+
+  const content = localStorage.getItem(STORAGE_KEY) || JSON.stringify(createFallbackState());
+  const blob = new Blob([content], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `mental-dashboard-backup-${getDateKey(new Date())}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(link.href);
+}
+
+function importData(file) {
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    try {
+      const parsed = JSON.parse(String(reader.result || ""));
+      const migrated = migrateState(parsed, getDateKey(new Date()));
+
+      if (!isValidImportedState(migrated)) {
+        window.alert("导入失败：文件格式不正确。");
+        return;
+      }
+
+      const confirmed = window.confirm("导入会覆盖当前本地数据，是否继续？");
+      if (!confirmed) return;
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+      window.location.reload();
+    } catch {
+      window.alert("导入失败：无法读取这个 JSON 文件。");
+    }
+  });
+  reader.readAsText(file);
+}
+
+function isValidImportedState(importedState) {
+  return (
+    importedState &&
+    importedState.schemaVersion === SCHEMA_VERSION &&
+    Array.isArray(importedState.tasks) &&
+    importedState.longLines &&
+    typeof importedState.longLines === "object" &&
+    typeof importedState.feeling === "string" &&
+    Array.isArray(importedState.archives)
+  );
 }
 
 function getDateKey(date) {
@@ -212,10 +363,18 @@ function archivePreviousDay(dayState, today) {
 
   return {
     ...dayState,
+    schemaVersion: SCHEMA_VERSION,
+    currentDay: {
+      date: today,
+      tasks: [],
+      longLines: createEmptyLongLines(),
+      feeling: "",
+    },
     activeDate: today,
     tasks: [],
-    longLines: Object.fromEntries(longLineNames.map((name) => [name, ""])),
+    longLines: createEmptyLongLines(),
     feeling: "",
+    archive: archives,
     archives,
   };
 }
@@ -518,6 +677,21 @@ feelingInput.addEventListener("input", () => {
 });
 
 reminderButton.addEventListener("click", pickReminder);
+closeDataPanelButton.addEventListener("click", closeDataPanel);
+exportDataButton.addEventListener("click", exportData);
+importDataInput.addEventListener("change", () => importData(importDataInput.files?.[0]));
+
+// Hidden shortcut: Ctrl + Shift + E opens the quiet Data panel for import/export.
+document.addEventListener("keydown", (event) => {
+  if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "e") {
+    event.preventDefault();
+    openDataPanel();
+  }
+
+  if (event.key === "Escape" && dataPanel.classList.contains("is-open")) {
+    closeDataPanel();
+  }
+});
 
 formatToday();
 updateTime();
